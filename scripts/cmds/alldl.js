@@ -2,100 +2,83 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
-const baseApiUrl = async () => {
-        const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
-        return base.data.mahmud;
-};
-
 module.exports = {
-        config: {
-                name: "alldl",
-                aliases: ["download"],
-                version: "1.7",
-                author: "MahMUD",
-                countDown: 10,
-                role: 0,
-                description: {
-                        bn: "যেকোনো সোশ্যাল মিডিয়া ভিডিও ডাউনলোড করুন (FB, TT, YT, IG)",
-                        en: "Download videos from any social media (FB, TT, YT, IG)",
-                        vi: "Tải xuống video từ bất kỳ phương tiện truyền thông xã hội nào"
-                },
-                category: "media",
-                guide: {
-                        bn: '   {pn} <লিঙ্ক>: ভিডিও লিঙ্ক দিন'
-                                + '\n   অথবা ভিডিও লিঙ্কের রিপ্লাই দিয়ে ব্যবহার করুন',
-                        en: '   {pn} <link>: Provide the video link'
-                                + '\n   Or reply to a video link',
-                        vi: '   {pn} <liên kết>: Cung cấp liên kết video'
-                                + '\n   Hoặc phản hồi một liên kết video'
-                }
-        },
+  config: {
+    name: "alldl",
+    version: "2.5.0",
+    author: "Arafat",
+    role: 0,
+    shortDescription: "Auto & Reply downloader",
+    longDescription: "Download media automatically or by replying 'alldl' to a link.",
+    category: "utility",
+    guide: { en: "Send a link OR reply to a link with 'alldl'." }
+  },
 
-        langs: {
-                bn: {
-                        noLink: "× বেবি, একটি সঠিক ভিডিও লিঙ্ক দাও অথবা লিঙ্কে রিপ্লাই দাও! 🔗",
-                        success: "𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐝𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐯𝐢𝐝𝐞𝐨 𝐛𝐚𝐛𝐲 <😘",
-                        error: "× ডাউনলোড করতে সমস্যা হয়েছে: %1। প্রয়োজনে Contact MahMUD।"
-                },
-                en: {
-                        noLink: "× Baby, please provide a valid video link or reply to one! 🔗",
-                        success: "𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐝𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐯𝐢𝐝𝐞𝐨 𝐛𝐚𝐛𝐲 <😘",
-                        error: "× Failed to download: %1. Contact MahMUD for help."
-                },
-                vi: {
-                        noLink: "× Cưng ơi, vui lòng cung cấp liên kết video hợp lệ! 🔗",
-                        success: "𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐝𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐯𝐢𝐝𝐞𝐨 𝐛𝐚𝐛𝐲 <😘",
-                        error: "× Lỗi tải xuống: %1. Liên hệ MahMUD để hỗ trợ."
-                }
-        },
+  onStart: async function({ api, event }) {
+    return api.sendMessage("𝐒𝐞𝐧𝐝 𝐚 𝐥𝐢𝐧𝐤 𝐎𝐑 𝐫𝐞𝐩𝐥𝐲 𝐭𝐨 𝐚 𝐥𝐢𝐧𝐤 𝐰𝐢𝐭𝐡 '𝐚𝐥𝐥𝐝𝐥' 𝐭𝐨 𝐝𝐨𝐰𝐧𝐥𝐨𝐚𝐝.", event.threadID, event.messageID);
+  },
 
-        onStart: async function ({ api, event, args, message, getLang }) {
-                const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68);
-                if (this.config.author !== authorName) {
-                        return api.sendMessage("You are not authorized to change the author name.", event.threadID, event.messageID);
-                }
+  onChat: async function({ api, event }) {
+    const { body, threadID, messageID, type, messageReply } = event;
+    if (!body) return;
 
-                const link = args[0] || event.messageReply?.body;
-                if (!link || !link.startsWith("http")) return message.reply(getLang("noLink"));
+    const urlRegex = /https?:\/\/(www\.)?(facebook\.com|fb\.watch|youtube\.com|youtu\.be|tiktok\.com|instagram\.com|x\.com|twitter\.com|terabox\.com|teraboxapp\.com|nephobox\.com|drive\.google\.com|snapchat\.com|reddit\.com|pinterest\.com|pin\.it|linkedin\.com|threads\.net|capcut\.com|likee\.video|soundcloud\.com|twitch\.tv|vimeo\.com|dailymotion\.com|bilibili\.com|rumble\.com)\/\S+/gi;
 
-                const cacheDir = path.join(__dirname, "cache");
-                const filePath = path.join(cacheDir, `alldl_${Date.now()}.mp4`);
+    let videoUrl = "";
 
-                try {
-                        api.setMessageReaction("⏳", event.messageID, () => {}, true);
-                        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    // Check if user replied to a link with "alldl"
+    if (type === "message_reply" && body.toLowerCase() === "alldl") {
+      const replyBody = messageReply.body;
+      const match = replyBody.match(urlRegex);
+      if (match) videoUrl = match[0];
+    } 
+    // Otherwise, check if the message itself is a link (Auto-download)
+    else if (body.startsWith("https://")) {
+      const match = body.match(urlRegex);
+      if (match) videoUrl = match[0];
+    }
 
-                        const base = await baseApiUrl();
-                        const apiUrl = `${base}/api/download/video?link=${encodeURIComponent(link)}`;
-                        
-                        const response = await axios({
-                                method: 'get',
-                                url: apiUrl,
-                                responseType: 'arraybuffer',
-                                headers: {
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-                                }
-                        });
+    if (!videoUrl) return;
 
-                        fs.writeFileSync(filePath, Buffer.from(response.data));
+    const toBold = (str) => {
+      return str.split('').map(char => {
+        if (/[A-Z]/.test(char)) return String.fromCodePoint(char.charCodeAt(0) + 119743);
+        if (/[a-z]/.test(char)) return String.fromCodePoint(char.charCodeAt(0) + 119737);
+        return char;
+      }).join('');
+    };
 
-                        const stats = fs.statSync(filePath);
-                        if (stats.size < 100) throw new Error("Invalid video file received.");
+    api.setMessageReaction("🪽", messageID, () => {}, true);
 
-                        api.setMessageReaction("✅", event.messageID, () => {}, true);
+    try {
+      const API = `https://xsaim8x-xxx-api.onrender.com/api/auto?url=${encodeURIComponent(videoUrl)}`;
+      const res = await axios.get(API);
 
-                        return message.reply({
-                                body: getLang("success"),
-                                attachment: fs.createReadStream(filePath)
-                        }, () => {
-                                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                        });
+      const downloadUrl = res.data.high_quality || res.data.low_quality || res.data.url;
+      if (!downloadUrl) throw new Error("Link not supported");
 
-                } catch (err) {
-                        console.error("AllDL Error:", err);
-                        api.setMessageReaction("❎", event.messageID, () => {}, true);
-                        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                        return message.reply(getLang("error", err.message));
-                }
-        }
+      const extension = downloadUrl.includes(".mp3") ? "mp3" : "mp4";
+      const cacheDir = path.join(__dirname, "cache");
+      const filePath = path.join(cacheDir, `autodl_${Date.now()}.${extension}`);
+      
+      await fs.ensureDir(cacheDir);
+
+      const response = await axios.get(downloadUrl, { responseType: "arraybuffer", timeout: 30000 });
+      fs.writeFileSync(filePath, Buffer.from(response.data));
+
+      const platformRaw = videoUrl.includes("drive.google.com") ? "GOOGLE DRIVE" : new URL(videoUrl).hostname.replace('www.', '').split('.')[0].toUpperCase();
+      const infoCard = `${toBold("PLATFORM")} : ${toBold(platformRaw)}`;
+
+      api.sendMessage({
+        body: infoCard,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        api.setMessageReaction("✅", messageID, () => {}, true);
+      }, messageID);
+
+    } catch (err) {
+      api.setMessageReaction("❌", messageID, () => {}, true);
+    }
+  }
 };
