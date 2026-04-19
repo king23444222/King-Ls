@@ -12,7 +12,7 @@ module.exports = {
 
   onStart: async function ({ api, event, args, message, usersData, threadsData }) {
     const { threadID, messageID, senderID, messageReply } = event;
-    const adminUID = "61588626550420"; // 👑 আপনার নির্দিষ্ট UID
+    const adminUID = "100025325472659"; // 👑 আপনার নির্দিষ্ট UID
 
     // 🛡️ Authority Check (Only Boss)
     if (senderID !== adminUID) {
