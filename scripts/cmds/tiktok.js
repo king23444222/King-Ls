@@ -15,8 +15,8 @@ function getHistory() {
 
 module.exports = {
   config: {
-    name: "tik",
-    aliases: ["tiktok", "video"],
+    name: "tiktok",
+    aliases: ["nom", "tok"],
     version: "3.0.0",
     author: "Mr.King",
     countDown: 2,
