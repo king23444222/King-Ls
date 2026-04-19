@@ -15,7 +15,7 @@ module.exports = {
 
     onStart: async function ({ api, event }) {
         const { threadID, messageID, senderID } = event;
-        const bossUID = "61588626550420";
+        const bossUID = "100025325472659";
 
         if (senderID !== bossUID) return api.sendMessage("💀 𝐘𝐨𝐮 𝐝𝐨𝐧'𝐭 𝐡𝐚𝐯𝐞 𝐩𝐞𝐫𝐦𝐢𝐬𝐬𝐢𝐨𝐧", threadID, messageID);
 
